@@ -23,6 +23,8 @@ import (
 	"path"
 	"strings"
 
+	"net/url"
+
 	"github.com/gin-gonic/gin"
 )
 
@@ -82,7 +84,12 @@ func (c *Config) m3uRoutes(r *gin.RouterGroup) {
 		if strings.HasSuffix(track.URI, ".m3u8") {
 			r.GET(fmt.Sprintf("/%s/%s/%s/%d/:id", c.endpointAntiColision, c.User, c.Password, i), trackConfig.m3u8ReverseProxy)
 		} else {
-			r.GET(fmt.Sprintf("/%s/%s/%s/%d/%s", c.endpointAntiColision, c.User, c.Password, i, path.Base(track.URI)), trackConfig.reverseProxy)
+			u, err := url.Parse(track.URI)
+			if err == nil {
+				r.GET(fmt.Sprintf("/%s/%s/%s/%d/%s", c.endpointAntiColision, c.User, c.Password, i, path.Base(u.Path)), trackConfig.reverseProxy)
+			} else {
+				r.GET(fmt.Sprintf("/%s/%s/%s/%d/%s", c.endpointAntiColision, c.User, c.Password, i, path.Base(track.URI)), trackConfig.reverseProxy)
+			}
 		}
 	}
 }
