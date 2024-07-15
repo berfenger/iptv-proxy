@@ -30,4 +30,7 @@ services:
       #will be used for m3u and xtream auth poxy
       USER: test
       PASSWORD: testpassword
+      CUSTOM_ID: myproxy
+      URL_HASH_METHOD: tags
+      CUSTOM_PATH: live
 
