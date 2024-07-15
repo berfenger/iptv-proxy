@@ -163,6 +163,8 @@ Or
       XTREAM_BASE_URL: "http://example.com:1234"
       USER: test
       PASSWORD: testpassword
+      CUSTOM_ID: myproxy
+      URL_HASH_METHOD: tags
 ```
 
 ### Start
@@ -244,6 +246,63 @@ Replace `iptv.proxyexample.xyz` in `docker-compose.yml` with your desired domain
 
 ```Shell
 $ docker-compose up -d
+```
+
+## Route IPTV traffic through VPN using gluetun
+
+`docker-compose` sample with gluetun VPN:
+
+```Yaml
+services:
+  gluetun:
+    image: qmcgaw/gluetun
+    container_name: gluetun
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    ports:
+      - 8095:8095
+    restart: on-failure
+    environment:
+      VPN_SERVICE_PROVIDER: surfshark
+      VPN_TYPE: wireguard
+      WIREGUARD_PRIVATE_KEY: "your_wireguard_private_key"
+      WIREGUARD_ADDRESSES: "your_wireguard_ip_address"
+      SERVER_COUNTRIES: France
+      SERVER_CITIES: Paris
+    
+  iptv-proxy:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      # If your are using local m3u file instead of m3u remote file
+      # put your m3u file in this folder
+      - ./iptv:/root/iptv
+    container_name: "iptv-proxy"
+    restart: on-failure
+    network_mode: "service:gluetun"
+    depends_on:
+      - "gluetun"
+    environment:
+      # if you are using m3u remote file
+      M3U_URL: https://example.com/iptvfile.m3u
+      # Port to expose the IPTVs endpoints
+      PORT: 8095
+      # Hostname or IP to expose the IPTVs endpoints (for machine not for docker)
+      HOSTNAME: iptv.proxyexample.xyz
+      GIN_MODE: release
+      ## Xtream-code proxy configuration
+      XTREAM_USER: xtream_user
+      XTREAM_PASSWORD: xtream_password
+      XTREAM_BASE_URL: "http://example.tv:8080"
+      ##### UNSAFE AUTH TODO ADD REAL AUTH
+      #will be used for m3u and xtream auth poxy
+      USER: test
+      PASSWORD: testpassword
+      CUSTOM_ID: vpn
+      HASH_URL_METHOD: tags
 ```
 
 ## TODO
