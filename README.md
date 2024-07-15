@@ -165,6 +165,7 @@ Or
       PASSWORD: testpassword
       CUSTOM_ID: myproxy
       URL_HASH_METHOD: tags
+      CUSTOM_PATH: live
 ```
 
 ### Start
