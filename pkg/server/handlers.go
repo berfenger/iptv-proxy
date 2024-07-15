@@ -27,6 +27,7 @@ import (
 	"net/http"
 	"net/url"
 	"path"
+	"slices"
 	"strings"
 	"time"
 
@@ -40,17 +41,17 @@ func (c *Config) getM3U(ctx *gin.Context) {
 	ctx.File(c.proxyfiedM3UPath)
 }
 
-func (c *Config) reverseProxy(ctx *gin.Context) {
+func (c *TrackConfig) reverseProxy(ctx *gin.Context) {
 	rpURL, err := url.Parse(c.track.URI)
 	if err != nil {
 		ctx.AbortWithError(http.StatusInternalServerError, err) // nolint: errcheck
 		return
 	}
 
-	c.stream(ctx, rpURL)
+	stream(ctx, rpURL)
 }
 
-func (c *Config) m3u8ReverseProxy(ctx *gin.Context) {
+func (c *TrackConfig) m3u8ReverseProxy(ctx *gin.Context) {
 	id := ctx.Param("id")
 
 	rpURL, err := url.Parse(strings.ReplaceAll(c.track.URI, path.Base(c.track.URI), id))
@@ -59,10 +60,10 @@ func (c *Config) m3u8ReverseProxy(ctx *gin.Context) {
 		return
 	}
 
-	c.stream(ctx, rpURL)
+	stream(ctx, rpURL)
 }
 
-func (c *Config) stream(ctx *gin.Context, oriURL *url.URL) {
+func stream(ctx *gin.Context, oriURL *url.URL) {
 	client := &http.Client{}
 
 	req, err := http.NewRequest("GET", oriURL.String(), nil)
@@ -95,25 +96,13 @@ func (c *Config) xtreamStream(ctx *gin.Context, oriURL *url.URL) {
 		return
 	}
 
-	c.stream(ctx, oriURL)
-}
-
-type values []string
-
-func (vs values) contains(s string) bool {
-	for _, v := range vs {
-		if v == s {
-			return true
-		}
-	}
-
-	return false
+	stream(ctx, oriURL)
 }
 
 func mergeHttpHeader(dst, src http.Header) {
 	for k, vv := range src {
 		for _, v := range vv {
-			if values(dst.Values(k)).contains(v) {
+			if slices.Contains(dst.Values(k), v) {
 				continue
 			}
 			dst.Add(k, v)

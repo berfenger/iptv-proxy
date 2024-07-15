@@ -24,7 +24,6 @@ import (
 	"log"
 	"net/url"
 	"os"
-	"path"
 	"path/filepath"
 	"strings"
 
@@ -45,8 +44,9 @@ type Config struct {
 
 	// M3U service part
 	playlist *m3u.Playlist
-	// this variable is set only for m3u proxy endpoints
-	track *m3u.Track
+
+	trackConfig []*TrackConfig
+
 	// path to the proxyfied m3u file
 	proxyfiedM3UPath string
 
@@ -62,11 +62,12 @@ func NewServer(config *config.ProxyConfig) (*Config, error) {
 		if err != nil {
 			return nil, err
 		}
+		p = trimTagStrings(p)
 	}
 
-        if trimmedCustomId := strings.Trim(config.CustomId, "/"); trimmedCustomId != "" {
-                endpointAntiColision = trimmedCustomId
-        }
+	if trimmedCustomId := strings.Trim(config.CustomId, "/"); trimmedCustomId != "" {
+		endpointAntiColision = trimmedCustomId
+	}
 
 	return &Config{
 		config,
@@ -96,6 +97,8 @@ func (c *Config) playlistInitialization() error {
 		return nil
 	}
 
+	computeRelPathForPlaylist(c)
+
 	f, err := os.Create(c.proxyfiedM3UPath)
 	if err != nil {
 		return err
@@ -111,29 +114,29 @@ func (c *Config) marshallInto(into *os.File, xtream bool) error {
 
 	ret := 0
 	into.WriteString("#EXTM3U\n") // nolint: errcheck
-	for i, track := range c.playlist.Tracks {
+	for _, trackConfig := range c.trackConfig {
 		var buffer bytes.Buffer
 
-		buffer.WriteString("#EXTINF:")                       // nolint: errcheck
-		buffer.WriteString(fmt.Sprintf("%d ", track.Length)) // nolint: errcheck
-		for i := range track.Tags {
-			if i == len(track.Tags)-1 {
-				buffer.WriteString(fmt.Sprintf("%s=%q", track.Tags[i].Name, track.Tags[i].Value)) // nolint: errcheck
+		buffer.WriteString("#EXTINF:")                                   // nolint: errcheck
+		buffer.WriteString(fmt.Sprintf("%d ", trackConfig.track.Length)) // nolint: errcheck
+		for i := range trackConfig.track.Tags {
+			if i == len(trackConfig.track.Tags)-1 {
+				buffer.WriteString(fmt.Sprintf("%s=%q", trackConfig.track.Tags[i].Name, trackConfig.track.Tags[i].Value)) // nolint: errcheck
 				continue
 			}
-			buffer.WriteString(fmt.Sprintf("%s=%q ", track.Tags[i].Name, track.Tags[i].Value)) // nolint: errcheck
+			buffer.WriteString(fmt.Sprintf("%s=%q ", trackConfig.track.Tags[i].Name, trackConfig.track.Tags[i].Value)) // nolint: errcheck
 		}
 
-		uri, err := c.replaceURL(track.URI, i-ret, xtream)
+		uri, err := c.replaceURL(trackConfig.track.URI, trackConfig, xtream)
 		if err != nil {
 			ret++
-			log.Printf("ERROR: track: %s: %s", track.Name, err)
+			log.Printf("ERROR: track: %s: %s", trackConfig.track.Name, err)
 			continue
 		}
 
-		into.WriteString(fmt.Sprintf("%s, %s\n%s\n", buffer.String(), track.Name, uri)) // nolint: errcheck
+		into.WriteString(fmt.Sprintf("%s, %s\n%s\n", buffer.String(), trackConfig.track.Name, uri)) // nolint: errcheck
 
-		filteredTrack = append(filteredTrack, track)
+		filteredTrack = append(filteredTrack, *trackConfig.track)
 	}
 	c.playlist.Tracks = filteredTrack
 
@@ -141,7 +144,7 @@ func (c *Config) marshallInto(into *os.File, xtream bool) error {
 }
 
 // ReplaceURL replace original playlist url by proxy url
-func (c *Config) replaceURL(uri string, trackIndex int, xtream bool) (string, error) {
+func (c *Config) replaceURL(uri string, trackConfig *TrackConfig, xtream bool) (string, error) {
 	oriURL, err := url.Parse(uri)
 	if err != nil {
 		return "", err
@@ -162,7 +165,7 @@ func (c *Config) replaceURL(uri string, trackIndex int, xtream bool) (string, er
 		uriPath = strings.ReplaceAll(uriPath, c.XtreamUser.PathEscape(), c.User.PathEscape())
 		uriPath = strings.ReplaceAll(uriPath, c.XtreamPassword.PathEscape(), c.Password.PathEscape())
 	} else {
-		uriPath = path.Join("/", c.endpointAntiColision, c.User.PathEscape(), c.Password.PathEscape(), fmt.Sprintf("%d", trackIndex), path.Base(uriPath))
+		uriPath = trackConfig.relativePath
 	}
 
 	basicAuth := oriURL.User.String()
@@ -186,4 +189,23 @@ func (c *Config) replaceURL(uri string, trackIndex int, xtream bool) (string, er
 	}
 
 	return newURL.String(), nil
+}
+
+func trimTagStrings(p m3u.Playlist) m3u.Playlist {
+	var newTracks []m3u.Track
+	for _, track := range p.Tracks {
+		var newTags []m3u.Tag
+		for _, tag := range track.Tags {
+			trimmedTag := m3u.Tag{
+				Name:  strings.TrimSpace(tag.Name),
+				Value: strings.TrimSpace(tag.Value),
+			}
+			newTags = append(newTags, trimmedTag)
+		}
+		track.Tags = newTags
+		newTracks = append(newTracks, track)
+	}
+	return m3u.Playlist{
+		Tracks: newTracks,
+	}
 }

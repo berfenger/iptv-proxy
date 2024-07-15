@@ -334,7 +334,7 @@ func (c *Config) xtreamStreamTimeshift(ctx *gin.Context) {
 		return
 	}
 
-	c.stream(ctx, rpURL)
+	stream(ctx, rpURL)
 }
 
 func (c *Config) xtreamStreamMovie(ctx *gin.Context) {
