@@ -52,6 +52,7 @@ type ProxyConfig struct {
 	M3UFileName          string
 	CustomEndpoint       string
 	CustomId             string
+	CustomPath           string
 	RemoteURL            *url.URL
 	AdvertisedPort       int
 	HTTPS                bool

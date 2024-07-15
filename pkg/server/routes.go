@@ -106,7 +106,6 @@ func computeRelPathForPlaylist(c *Config) {
 		if strings.HasSuffix(track.URI, ".m3u8") {
 			relativePath = fmt.Sprintf("/%s/%s/%s/%d/:id", c.endpointAntiColision, c.User.PathEscape(), c.Password.PathEscape(), i)
 		} else {
-			u, err := url.Parse(track.URI)
 			var id string
 			hash := hashByMethod(c.ProxyConfig.URLHashMethod, track)
 			if hash != nil {
@@ -119,10 +118,15 @@ func computeRelPathForPlaylist(c *Config) {
 			} else {
 				id = strconv.Itoa(i)
 			}
-			if err == nil {
-				relativePath = fmt.Sprintf("/%s/%s/%s/%s/%s", c.endpointAntiColision, c.User.PathEscape(), c.Password.PathEscape(), id, path.Base(u.Path))
+			if c.CustomPath != "" {
+				relativePath = fmt.Sprintf("/%s/%s/%s/%s/%s", c.endpointAntiColision, c.User.PathEscape(), c.Password.PathEscape(), id, url.PathEscape(c.CustomPath))
 			} else {
-				relativePath = fmt.Sprintf("/%s/%s/%s/%s/%s", c.endpointAntiColision, c.User.PathEscape(), c.Password.PathEscape(), id, path.Base(track.URI))
+				u, err := url.Parse(track.URI)
+				if err == nil {
+					relativePath = fmt.Sprintf("/%s/%s/%s/%s/%s", c.endpointAntiColision, c.User.PathEscape(), c.Password.PathEscape(), id, path.Base(u.Path))
+				} else {
+					relativePath = fmt.Sprintf("/%s/%s/%s/%s/%s", c.endpointAntiColision, c.User.PathEscape(), c.Password.PathEscape(), id, path.Base(track.URI))
+				}
 			}
 		}
 		trackConfig := &TrackConfig{

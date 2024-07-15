@@ -85,6 +85,7 @@ var rootCmd = &cobra.Command{
 			M3UFileName:          viper.GetString("m3u-file-name"),
 			CustomEndpoint:       viper.GetString("custom-endpoint"),
 			CustomId:             viper.GetString("custom-id"),
+			CustomPath:           viper.GetString("custom-path"),
 			XtreamGenerateApiGet: viper.GetBool("xtream-api-get"),
 			URLHashMethod:        viper.GetString("url-hash-method"),
 		}
@@ -124,6 +125,7 @@ func init() {
 	rootCmd.Flags().StringP("m3u-file-name", "", "iptv.m3u", `Name of the new proxified m3u file e.g "http://poxy.com/iptv.m3u"`)
 	rootCmd.Flags().StringP("custom-endpoint", "", "", `Custom endpoint "http://poxy.com/<custom-endpoint>/iptv.m3u"`)
 	rootCmd.Flags().StringP("custom-id", "", "", `Custom anti-collison ID for each track "http://proxy.com/<custom-id>/..."`)
+	rootCmd.Flags().StringP("custom-path", "", "", `Custom final path for each track ".../track-id/<custom-path>"`)
 	rootCmd.Flags().Int("port", 8080, "Iptv-proxy listening port")
 	rootCmd.Flags().Int("advertised-port", 0, "Port to expose the IPTV file and xtream (by default, it's taking value from port) useful to put behind a reverse proxy")
 	rootCmd.Flags().String("hostname", "", "Hostname or IP to expose the IPTVs endpoints")
